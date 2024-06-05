@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace RPXReader
@@ -203,8 +204,8 @@ namespace RPXReader
                 StringBuilder strBuilder = new StringBuilder();
 
                 strBuilder.AppendLine("ROM info:");
-                strBuilder.AppendLine("  Title: \"" + GetTitleWithRegion(ProductCode) + "\"");
-                strBuilder.AppendLine("  Release date:       " + GetReleaseDate(ProductCode));
+                //strBuilder.AppendLine("  Title: \"" + GetTitleWithRegion(ProductCode) + "\"");
+                //strBuilder.AppendLine("  Release date:       " + GetReleaseDate(ProductCode));
                 strBuilder.AppendLine("  Product code:       " + ProductCode);
                 strBuilder.AppendLine("  Preset ID:          0x" + PresetID.ToString("X4"));
                 strBuilder.AppendLine("  FDS ROM:            " + IsFDS.ToString());
@@ -252,15 +253,15 @@ namespace RPXReader
         { private set; get; }
         public VCType Type
         { private set; get; }
-        public uint CRCsSum
-        { private set; get; }
+        //public uint CRCsSum
+        //{ private set; get; }
 
         public RPXNES(string filename, bool readInfo = true)
             : base(filename, false)
         {
             ROM = new ROMInfo();
             Type = VCType.Unknown;
-            CRCsSum = 0;
+            //CRCsSum = 0;
 
             if (SectionHeader.Length == 0)
                 throw new FormatException("It is not an RPX file.");
@@ -319,10 +320,10 @@ namespace RPXReader
         protected override void ReadInfo(string filename)
         {
             base.ReadInfo(filename);
-            long sum = 0;
+            //long sum = 0;
             for (int i = 0; i < SectionHeader.Length; i++)
             {
-                sum += CRC[i];
+                //sum += CRC[i];
                 if (SectionHeader[i].sh_offset != 0 &&
                     SectionHeader[i].sh_addr == 0x10000000 &&
                     SectionName[i] == ".rodata")
@@ -339,14 +340,97 @@ namespace RPXReader
                     ROM = new ROMInfo(sectionData);
                 }
             }
-            sum -= (long)CRC[2] + CRC[3] + CRC[CRC.Length - 1];
-            CRCsSum = (uint)(sum >> 4);
+            //sum -= (long)CRC[2] + CRC[3] + CRC[CRC.Length - 1];
+            //CRCsSum = (uint)(sum >> 4);
+            MD5 = GetMD5();
+        }
+
+        private string GetMD5()
+        {
+            StringBuilder strBuilder = new StringBuilder();
+
+            if (SectionHeader.Length != 0)
+            {
+                //strBuilder.Append(CRC[0].ToString("X8"));//NULL
+                strBuilder.Append(CRC[1].ToString("X8"));//.syscall
+                //strBuilder.Append(CRC[2].ToString("X8"));//.text
+                //strBuilder.Append(CRC[3].ToString("X8"));//.rodata
+                strBuilder.Append(CRC[4].ToString("X8"));//.data (*)
+                strBuilder.Append(CRC[5].ToString("X8"));//.module_id
+                //strBuilder.Append(CRC[6].ToString("X8"));//.bss
+                strBuilder.Append(CRC[7].ToString("X8"));//.rela.rodata (*)
+                strBuilder.Append(CRC[8].ToString("X8"));//.rela.text (*)
+                strBuilder.Append(CRC[9].ToString("X8"));//.rela.data (*)
+                strBuilder.Append(CRC[10].ToString("X8"));//.fimport_nn_act
+
+                VCType type = GetVCType();
+                if (type == VCType.A)
+                {
+                    //strBuilder.Append(CRC[].ToString("X8"));//.dimport_nn_act
+                    strBuilder.Append(CRC[11].ToString("X8"));//.fimport_sysapp
+                    strBuilder.Append(CRC[12].ToString("X8"));//.fimport_zlib125
+                    strBuilder.Append(CRC[13].ToString("X8"));//.fimport_gx2
+                    strBuilder.Append(CRC[14].ToString("X8"));//.fimport_snd_core
+                    //strBuilder.Append(CRC[15].ToString("X8"));//.dimport_snd_core
+                    strBuilder.Append(CRC[16].ToString("X8"));//.fimport_snd_user
+                    //strBuilder.Append(CRC[17].ToString("X8"));//.dimport_snd_user
+                    strBuilder.Append(CRC[18].ToString("X8"));//.fimport_nn_save
+                    strBuilder.Append(CRC[19].ToString("X8"));//.fimport_vpad
+                    strBuilder.Append(CRC[20].ToString("X8"));//.fimport_proc_ui
+                    strBuilder.Append(CRC[21].ToString("X8"));//.fimport_padscore
+                    strBuilder.Append(CRC[22].ToString("X8"));//.fimport_coreinit
+                    strBuilder.Append(CRC[23].ToString("X8"));//.dimport_coreinit
+                    strBuilder.Append(CRC[24].ToString("X8"));//.fimport_mic
+                    strBuilder.Append(CRC[25].ToString("X8"));//.symtab (*)
+                    strBuilder.Append(CRC[26].ToString("X8"));//.strtab
+                    strBuilder.Append(CRC[27].ToString("X8"));//.shstrtab
+                    //strBuilder.Append(CRC[28].ToString("X8"));//CRCs
+                    //strBuilder.Append(CRC[29].ToString("X8"));//RPL Info
+                }
+                else if (type == VCType.B)
+                {
+                    //strBuilder.Append(CRC[11].ToString("X8"));//.dimport_nn_act
+                    strBuilder.Append(CRC[12].ToString("X8"));//.fimport_sysapp
+                    strBuilder.Append(CRC[13].ToString("X8"));//.fimport_zlib125
+                    strBuilder.Append(CRC[14].ToString("X8"));//.fimport_gx2
+                    strBuilder.Append(CRC[15].ToString("X8"));//.fimport_snd_core
+                    //strBuilder.Append(CRC[].ToString("X8"));//.dimport_snd_core
+                    strBuilder.Append(CRC[16].ToString("X8"));//.fimport_snd_user
+                    //strBuilder.Append(CRC[].ToString("X8"));//.dimport_snd_user
+                    strBuilder.Append(CRC[17].ToString("X8"));//.fimport_nn_save
+                    strBuilder.Append(CRC[18].ToString("X8"));//.fimport_vpad
+                    strBuilder.Append(CRC[19].ToString("X8"));//.fimport_proc_ui
+                    strBuilder.Append(CRC[20].ToString("X8"));//.fimport_padscore
+                    strBuilder.Append(CRC[21].ToString("X8"));//.fimport_coreinit
+                    strBuilder.Append(CRC[22].ToString("X8"));//.dimport_coreinit
+                    strBuilder.Append(CRC[23].ToString("X8"));//.fimport_mic
+                    strBuilder.Append(CRC[24].ToString("X8"));//.symtab (*)
+                    strBuilder.Append(CRC[25].ToString("X8"));//.strtab
+                    strBuilder.Append(CRC[26].ToString("X8"));//.shstrtab
+                    //strBuilder.Append(CRC[27].ToString("X8"));//CRCs
+                    //strBuilder.Append(CRC[28].ToString("X8"));//RPL Info
+                }
+                else
+                {
+                    for (int i = 11; i < SectionHeader.Length; i++)
+                        strBuilder.Append(CRC[i].ToString("X8"));
+                }
+            }
+
+            byte[] hash;
+            System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create();
+            hash = md5.ComputeHash(Encoding.ASCII.GetBytes(strBuilder.ToString()));
+
+            return BitConverter.ToString(hash).Replace("-", string.Empty);
         }
 
         public override string ToString()
         {
             StringBuilder strBuilder = new StringBuilder();
 
+            strBuilder.AppendLine("MD5: " + MD5);
+            strBuilder.AppendLine("Base title: " + GetBase(MD5));
+            strBuilder.AppendLine();
             strBuilder.AppendLine(Header.ToString());
             strBuilder.Append(Info.ToString());
             strBuilder.AppendLine("  mSrcFileName: \"" + SrcFileName + "\"");
@@ -354,10 +438,10 @@ namespace RPXReader
             for (int i = 0; i < Tags.Count; i++)
                 strBuilder.AppendLine("    " + Tags[i]);
             strBuilder.AppendLine();
-            strBuilder.AppendLine("VC NES:");
-            strBuilder.AppendLine("  Type: " + Type.ToString());
-            strBuilder.AppendLine("  CRCs sum: 0x" + CRCsSum.ToString("X8"));
-            strBuilder.AppendLine();
+            //strBuilder.AppendLine("VC NES:");
+            //strBuilder.AppendLine("  Type: " + Type.ToString());
+            //strBuilder.AppendLine("  CRCs sum: 0x" + CRCsSum.ToString("X8"));
+            //strBuilder.AppendLine();
             strBuilder.Append(ROM.ToString());
             strBuilder.AppendLine();
 
@@ -376,6 +460,198 @@ namespace RPXReader
             }
 
             return strBuilder.ToString();
+        }
+
+        new public string GetBase(string md5)
+        {
+            switch (md5)
+            {
+                case "652E7014F497E1B79FAAB09B6D2400FF": return "Adventure Island (USA) [FBGE]";
+                case "F6F59E9A464C34E6571D35BCC97C872C": return "Adventures of Lolo (USA) [FCXE]";
+                case "35A39DA573D0BDC417446C2FEE68570D": return "Antarctic Adventure (けっきょく南極大冒険) (JPN) [FC4J]";
+                case "B5149296F6D4B9787DCDF0A7DAE00C9F": return "Atlantis no Nazo (アトランチスの謎) (JPN) [FEAJ]";
+                case "AAE308A89498F28099DF5A205C25991B": return "Balloon Fight (USA) [FAJE]";
+                case "FDEAD24E63C59DFE9B02E08D66EC25CB": return "Balloon Fight (EUR) [FAJP]";
+                case "C41B103DAEA1AAF28492EFB4E3E8432C": return "Baseball Simulator 1000 (USA) [FEVE]";
+                case "29271881D5A54EC561A4389B97F545AF": return "Bases Loaded (USA) [FC2E]";
+                case "7DE08C8FD6DFE27D0B8953D3C7BBA2A9": return "Bases Loaded (燃えろ!!プロ野球) (JPN) [FC2J]";
+                case "7A529BFBF4492C583BFDECB0C8F9C5C6": return "Battle City (バトルシティー) (JPN) [FCTJ]";
+                case "1732135298D459FF603DCC507531F8BE": return "Blaster Master (USA) [FEBE]";
+                case "1693E23D891B9EC7A84B9AB206DB08CA": return "Blaster Master (EUR) [FEBP]";
+                case "9DECB2A246E9DFEB6CE4B1BA35E5C2B4": return "Blaster Master (超惑星戦記 メタファイト) (JPN) [FEBJ]";
+                case "8B05747621DF5751D837176863FE9A0E": return "Bubble Bobble (JPN) [FBWJ]";
+                case "9343C7BB23EE0C6F53A0321161C0ECC3": return "Castlevania (USA) [FB3E]";
+                case "EC377F250D53505921B6ABB8669D483E": return "Castlevania (悪魔城ドラキュラ) (JPN) [FB3J]";
+                case "81B2FDB2A6756A5F13DE5706A5C8F95A": return "Castlevania II: Simon's Quest (USA) [FB8E]";
+                case "33F236D341F2B0FC29A25F47280AAB84": return "Castlevania II: Simon's Quest (ドラキュラⅡ 呪いの封印) (JPN) [FB8J]";
+                case "111FC3440F05A9E0B31E49FF3F945477": return "Castlevania II: Simon's Redaction [0005000010105050] (USA) [FB8E - Castlevania II: Simon's Quest]";
+                case "71150889F1268AC4A071D4119F5D3C67": return "Castlevania III: Dracula's Curse (USA) [FCHE]";
+                case "42F9ABC6AC247C0A43B61728DD89C738": return "Castlevania III: Dracula's Curse (悪魔城伝説) (JPN/EUR) [FCHJ]";
+                case "24C8083A1727CAA338C3D61F089FD508": return "Castlevania III: Dracula's Curse DX [0005000010104340] (USA) [FCHE - Castlevania III: Dracula's Curse]";
+                case "B99498BF93E6E20DBF1D100FC9C2E28F": return "Castlevania RPG [0005000010105425] (USA) [FB3E - Castlevania]";
+                case "A37671BA78D0592B90F64620D286BCE0": return "Championship Lode Runner (チャンピオンシップ・ロードランナー) (JPN) [FEDJ]";
+                case "91AD2FEE77DA4716991FD2BCE5C4BEE2": return "City Connection (USA) [FE4E]";
+                case "1755FFDD0705B5967423CA46AD6A43CD": return "City Connection (シティコネクション) (JPN) [FE4J]";
+                case "21B235C5F222F50D1FE28FCB56E7AD9F": return "Clu Clu Land (クルクルランド) (JPN) [FBQJ]";
+                case "E1069114111D7DC7F635D5CD3D28D47A": return "Crash 'n' the Boys: Street Challenge (USA) [FDSE]";
+                case "78F6777FB88E0CE6E754043E06ADBB12": return "Crystalis Rebalanced [0005000010105431] (USA) [FBDE - EarthBound Beginnings]";
+                case "03A58B4F590D511A1513126C713C0F18": return "Devil World (デビルワールド) (JPN/EUR) [FDMJ]";
+                case "E4DC3CB680360C38B7DB194877E4F25E": return "Dig Dug (USA) [FDEE]";
+                case "8981B4518CFE10A5F2E2870F2804359B": return "Dig Dug II (USA) [FEWE]";
+                case "732A2BED8C969CAE5E0B64DAB1773847": return "Dig Dug II (ディグダグⅡ) (JPN) [FEWJ]";
+                case "082B69B4635A9AAFD17A287321F1F4A0": return "Donkey Kong (USA) [FAFE]";
+                case "7CD633CDA1E6626A26F72066E7A5D49D": return "Donkey Kong 3 (USA) [FBRE]";
+                case "29177D0613AB5F478DB23BA77DCD3D06": return "Donkey Kong 3 (ドンキーコング3) (JPN) [FBRJ]";
+                case "1D7F0126C6EE1825065772DA476192CF": return "Donkey Kong Jr. (USA) [FAWE]";
+                case "69234809EFAF50DA34F403B7E6CC9657": return "Donkey Kong Jr. Math (USA) [FDDE]";
+                case "8B6C563FEE2A605DA70C213136AC35CD": return "Double Dragon (USA) [FB7E]";
+                case "0F0490C752D7D7CEFDC9A050E17667B0": return "Double Dragon II: The Revenge (USA) [FC8E]";
+                case "DBD0662372951E3E53EB92C094DDF692": return "Double Dragon III: The Sacred Stones (USA) [FE8E]";
+                case "6214636C0F49246F87B8A7026A608D5B": return "Downtown Special (ダウンタウンスペシャル くにおくんの時代劇だよ全員集合！) (JPN) [FBZJ]";
+                case "760CF151BE14CFDBF997230B375122BB": return "Dr. Mario (USA) [FB5E]";
+                case "634CD59B97FB624D9C1B7A9C938E75DE": return "Dr. Mario (EUR) [FB5P]";
+                case "9BCF855CD4DFACC88484CE0F56A82F16": return "Dragon Buster (ドラゴンバスター) (JPN) [FDFJ]";
+                case "C145D7AC3A474ABA49326896B81C0701": return "Duck Hunt (USA) [FEHE]";
+                case "AC4EF67414BDC34832F92F1983D5E95A": return "EarthBound Beginnings (USA) [FBDE]";
+                case "39D665DA8A9AB487E9A1769EA71919B9": return "Elevator Action (JPN) [FB9J]";
+                case "620B546DE8CC4DB30A591E6EC5C9D85A": return "Esper Dream (エスパードリーム) (JPN) [FD4J]";
+                case "31BF54B7220CD024639B4801A9CA1986": return "Excitebike (USA) [FAGE]";
+                case "1815486F248B4FDF0E373AD0C314A281": return "Excitebike (エキサイトバイク) (JPN) [FAGJ]";
+                case "2B54E0379A220315229136E8492B41AE": return "Exerion (エクセリオン) (JPN) [FERJ]";
+                case "D4B1D5D09FD8AC637CEC4426C1308E3A": return "Famicom Tantei Club: Kieta Kōkeisha (ファミコン探偵倶楽部 消えた後継者(前後編)) (JPN) [FCAJ]";
+                case "3C27B25FDB0609295590F2FFD6CE8EED": return "Famicom Wars (ファミコンウォーズ) (JPN) [FDWJ]";
+                case "A454D8BC4A95602962AB1CE6066F3731": return "Field Combat (フィールドコンバット) (JPN) [FELJ]";
+                case "485DF17A9176D8E88B81388C2CE09415": return "Final Fantasy (ファイナルファンタジー) (JPN) [FBTJ]";
+                case "ED710F7B303C721F73E3422C4FB18F77": return "Final Fantasy Restored [0005000010105567] (USA) [FAPE - Mega Man 2]";
+                case "37EE1547441DF9B0B72B9E598600068B": return "Fire Emblem Gaiden (ファイアーエムブレム 外伝) (JPN) [FCNJ]";
+                case "4E78ABB10657F57E69CEBA893BE8CF76": return "Fire Emblem Gaiden Spanish [0005000010102137] (USA) [FBVE - Wario's Woods]";
+                case "C7F576214DA517E669743972624C0CEF": return "Flying Dragon: The Secret Scroll (USA) [FCME]";
+                case "338D83AFCEBA332B6E965FED14D50DD3": return "Flying Warriors (USA) [FENE]";
+                case "88BBC766325103D2A040B82B414BA596": return "Front Line (フロントライン) (JPN) [FEYJ]";
+                case "A6DEE3029117AFC73B96714C80144AE9": return "Galaga (USA) [FA6E]";
+                case "2B5BD3F2DF6DB9241FA7B8B7E1BCE197": return "Galaga (ギャラガ) (JPN) [FA6J]";
+                case "AD46076E63AD942F15876D8486DF1778": return "Ganbare Goemon 2 (がんばれゴエモン２) (JPN) [FD5J]";
+                case "9ADFFE130D65161F05BBBBDB6C69C604": return "Ganbare Goemon Gaiden 2 (がんばれゴエモン外伝2 天下の財宝) (JPN) [FDPJ]";
+                case "66773447185A6E4F3ABBA2BDF855E4E5": return "Ganbare Goemon Gaiden (がんばれゴエモン外伝  きえた黄金キセル) (JPN) [FEKJ]";
+                case "CBBA95368443EEDA33E7943BA58CA406": return "Gargoyle's Quest II: The Demon Darkness (USA) [FC6E]";
+                case "7EAA32C861FE117410C8FC5CF3DF4A74": return "Ghosts 'n Goblins (USA) [FBHE]";
+                case "9C156AFD8F6071456D08C91F95310E6D": return "Golf (USA) [FBSE]";
+                case "4FA40681ECFA74205AE76EE32BB20546": return "Golf (ゴルフ) (JPN) [FBSJ]";
+                case "76BE8D12B0B2EC0047490691DC3256B3": return "Gradius (USA) [FATE]";
+                case "D620574D4D8F2B7B3A5C8F596DE85537": return "Gradius (グラディウス) (JPN) [FATJ]";
+                case "74B24A240B8D90B9D7F334478BB748AE": return "Hanjuku Hero (半熟英雄) (JPN) [FCJJ]";
+                case "748D678174190ECB74AE255EC73CF04F": return "Hogan's Alley (USA) [FHAE]";
+                case "B003E0915FB16824785D872B181A28C0": return "Ice Hockey (USA) [FBUE]";
+                case "2AB613C7B3F5D6A779340C25CF155E60": return "Ice Hockey (アイスホッケー) (JPN) [FBUJ]";
+                case "CC8E5F02656DF92C332EFBF802A89276": return "Kid Icarus (USA) [FBBE]";
+                case "D1D3FA325510644879600CF59F8CDA61": return "King's Knight (キングスナイト) (JPN) [FEXJ]";
+                case "519424BDDB872A802953D81AFA62FDDD": return "Kirby's Adventure (USA) [FADE]";
+                case "A3612923D4601E2FA158405E7556615B": return "Kirby's Adventure (星のカービィ　夢の泉の物語) (JPN) [FADJ]";
+                case "5A78695BEF5C07A765C42A7F05216A6B": return "Konami's Ping Pong (スマッシュピンポン) (JPN) [FDVJ]";
+                case "1E575BDA934D87394F888E48DA3580EB": return "Kung Fu Heroes (スーパーチャイニーズ) (JPN) [FCWJ]";
+                case "48247BD34809A62EFCFACB82846E7F73": return "Kung-Fu Heroes (USA) [FCWE]";
+                case "6BB5BA44771CF7210D56805997FDCB65": return "Kung-Fu Heroes [0005000010101779] (USA) [FAKE - Punch-Out!!]";
+                case "9F5B8376BCA112199A08F4058EF00E44": return "Life Force (EUR) [FC9P]";
+                case "4B28C590C944F4C1EFC35374CB7E41DB": return "Life Force (沙羅曼蛇) (USA) [FC9E]";
+                case "79C41092AA751D8ACF009242D8174773": return "Mach Rider (USA) [FCQE]";
+                case "B477A5A968FE40DDB2C6BCAF8B3546B8": return "MagMax (マグマックス) (JPN) [FEPJ]";
+                case "9A21CD99D26DA43DBB5EEE28DE9CB9E6": return "Mappy (マッピー) (JPN) [FA2J]";
+                case "4BFCEBA65550A6EB0803794FB69A5BF8": return "Mappy-Land (USA) [FD9E]";
+                case "EF91F681A39A33E428252E0ACFBDA452": return "Mappy-Land (EUR) [FD9P]";
+                case "54F9D5F67C28AE527FB518D7437884E5": return "Mappy-Land (マッピーランド) (JPN) [FD9J]";
+                case "243D0A75C72B57B16FF4BC7DD5033B3B": return "Mario & Yoshi (ヨッシーのたまご) (JPN/EUR) [FAMJ]";
+                case "796ED6A64C6272A2A3E05D13084FB63C": return "Mario Bros. [0005000010105781] (USA) [FAAE - Super Mario Bros.]";
+                case "15C788E9EF4D1F70DF4A9245ED3A3402": return "Mega Man (USA) [FANE]";
+                case "80EA4F2FF7ECA40B60FA0ACBB6E28887": return "Mega Man 2 (USA) [FAPE]";
+                case "BD1B0AE0B754808E1E5ABF5AA1BDBD02": return "Mega Man 3 (USA) [FAZE]";
+                case "466AA1E1F88A8940F7541D131CB98BC9": return "Mega Man 4 (USA) [FA7E]";
+                case "E0ADEE7020D57BA3DBE5B49AF18F756B": return "Mega Man 5 (USA) [FC5E]";
+                case "43C8BE82DBBDEC9C9DA851E5B33308A2": return "Mega Man 6 (USA) [FCSE]";
+                case "D76476D73DB92502B39782F69CDD4589": return "Mega Man Redux [0005000010105569] (USA) [FANE - Mega Man]";
+                case "DD87A1A46D2A9B3191E8CEE140AC89B8": return "Metal Slader Glory (メタルスレイダーグローリー) (JPN) [FETJ]";
+                case "94B0756A7320A0D5842FF9491D1CD7C0": return "Metro-Cross (メトロクロス) (JPN) [FEGJ]";
+                case "FDD51DEC55D1989CD9ADA5C0993E9260": return "Metroid (メトロイド) (JPN) [FA8J]";
+                case "B66332A9B5959722EB97EC5302EDA96B": return "Mighty Bomb Jack (USA) [FCCE]";
+                case "9A572F5C0231E15D06D943E03498BFD7": return "Mighty Bomb Jack (EUR) [FCCP]";
+                case "B59488839467EF8FBBCF7A3427AABA4F": return "Mighty Bomb Jack (マイティボンジャック) (JPN) [FCCJ]";
+                case "F64F8A8766FC77E3FDA36BF676D13495": return "Mighty Final Fight (USA) [FDKE]";
+                case "718362732AD7769453876BF5EBA3F6DD": return "Mother (JPN) [FBDJ]";
+                case "6234E10EF32289D217593FDA304D074F": return "NES Open Tournament Golf (USA) [FB4E]";
+                case "82FE97BECD1D46ACA57335BB54FA08E7": return "NES Open Tournament Golf (EUR) [FB4P]";
+                case "1A14709A8410954EAE9B956FC25B7D0A": return "Ninja Gaiden (USA) [FCBE]";
+                case "224B251897A97A1113BA73A637654BC7": return "Ninja Gaiden (EUR) [FCBP]";
+                case "8CF20064179B92B3B0229A440089DE03": return "Ninja Gaiden II: The Dark Sword of Chaos (USA) [FE5E]";
+                case "5D62C60FC6E92CF7858D8600C69208B7": return "Ninja Gaiden III: The Ancient Ship of Doom (USA) [FE6E]";
+                case "69C8E99094CC8B6021967BA580B69506": return "Nintendo World Cup (熱血高校ドッジボール部　サッカー編) (JPN) [FCLJ]";
+                case "7702E3A48A21550D6760C9DD3A3A6AB5": return "Nintendo Zapper (ワイルドガンマン) (JPN) [FEUJ]";
+                case "DBF7362A97A31556C191DF117561A1C1": return "Pac-Land (USA) [FCZE]";
+                case "D910041D60C22CC64A5E2999CEBC330C": return "Pinball (EUR) [FBNP]";
+                case "760AEA2C140EC115CC45D8151091FB23": return "Pooyan (プーヤン) (JPN) [FDZJ]";
+                case "B733339FCC98C0917FCC262E6EF01B9D": return "Princess Tomato in the Salad Kingdom (サラダの国のトマト姫) (JPN) [FCVJ]";
+                case "F072DDB0137DC379C31C7D6F70D0D27F": return "Punch-Out!! (USA) [FAKE]";
+                case "C807F7E3A88E439ADDB0171A2092342E": return "Renegade (USA) [FB6E]";
+                case "F75E5F4ECB8F3D0CB4C9EF10CAE43B92": return "Renegade (EUR) [FB6P]";
+                case "368D5EE5B1F1547A17FABBA878867C4E": return "Renegade (熱血硬派くにおくん) (JPN) [FB6J]";
+                case "78D2A1DA75B4043EA129B02D4068A92A": return "River City Ransom (USA) [FESE]";
+                case "B24C7B164A0FE03951B38A18A207086E": return "River City Ransom (ダウンタウン熱血物語) (JPN) [FESJ]";
+                case "48D6B28AEDBC734E79497D82C51C3688": return "Rockman 4: Aratanaru Yabou!! (ロックマン4 新たなる野望!!) (JPN) [FA7J]";
+                case "E6F60F9918D48DDC8ABE24D08D9191D8": return "S.C.A.T. (USA) [FDUE]";
+                case "5131FEE629B83AA4B5516E590590A515": return "Seicross (セクロス) (JPN) [FD8J]";
+                case "8F28EC0DA872DD082B09B4FF9E0BF48D": return "Shadow of the Ninja (USA) [FDTE]";
+                case "A13FD9F4E8DC652FC3FCA59DBE61AD8F": return "Shadow of the Ninja (EUR) [FDTP]";
+                case "FE2EE3C3DFD98BAD4FB50385938038D3": return "Shin Onigashima (ふぁみこんむかし話 新･鬼ヶ島(前後編)) (JPN) [FA5J]";
+                case "D7ADCF2F763C4B30BB8F1D3539CCC122": return "Sky Kid (USA) [FDYE]";
+                case "9EFB4BA737FEEA8B8BEA79925B608C7D": return "Sky Kid (スカイキッド) (JPN) [FDYJ]";
+                case "D90C058415666733C939672541E316FF": return "Solomon's Key (USA) [FAYE]";
+                case "77AFA384370357688BA97265EAF98E30": return "Star Luster (スターラスター) (JPN) [FEJJ]";
+                case "266BF976CCE0179D8D358B90426F29F9": return "StarTropics (USA) [FE2E]";
+                case "2C4FC4831BFC0259D0879C9E16B7A383": return "Stinger (USA) [FD6E]";
+                case "D25EE9954568857085373EDCD73932CD": return "Super Dodge Ball (USA) [FB2E]";
+                case "4A3A159B212442A149F332E3FBE318A2": return "Super Dodge Ball (EUR) [FB2P]";
+                case "00EE2DE027F727953BC1202FD5F65371": return "Super Dodge Ball (熱血高校ドッジボール部) (JPN) [FB2J]";
+                case "71ECAD41A699CB6193A692F86A39104B": return "Super Mario Bros. (USA) [FAAE]";
+                case "6CF9ECAEDDB97A81AF79E5B36D6B40EF": return "Super Mario Bros. 2 (USA) [FAHE]";
+                case "CA70846A8A7BAE65E7766B119E8CE6F7": return "Super Mario Bros. USA (スーパーマリオＵＳＡ) (JPN/EUR) [FAHJ]";
+                case "279A2708233C22CA7C32DEF7993CA0A6": return "Super Mario Bros. 2 (スーパーマリオブラザーズ２) (JPN) [FA9J]";
+                case "B6E7AD0553F47246BD8CF87914A903C3": return "Super Mario Bros. 3 (USA) [FABE]";
+                case "1851EB4007F15A3385C3DDCF0307B6DC": return "Super Mario Bros. 3 Extended Edition [0005000010104920] (USA) [FABE - Super Mario Bros. 3]";
+                case "B84C38A20300DE9AC3B91C80844B453A": return "Super Mario Bros. DX [0005000010105571] (USA) [FAHE - Super Mario Bros. 2]";
+                case "A98D6B63ADBBC747A89CD44AA156E6C8": return "Super Mario Bros.: The Lost Levels (USA) [FA9E]";
+                case "0C4C564AC9DDA7A6AF0ED54F849C26CB": return "Tatakai no Banka (闘いの挽歌) (JPN) [FDQJ]";
+                case "BE0C1399658FA90CA4B8DFCF2302E540": return "Tetris [0005000010105399] (USA) [FC8E - Double Dragon II: The Revenge]";
+                case "1C8FE3EFD5624FC12E30D704B69B2183": return "The Adventures of Bayou Billy (USA) [FD2E]";
+                case "4D922FCCE3C93C54FECA577D1ACC8418": return "The Legend of Kage (影の伝説) (JPN) [FCKJ]";
+                case "E278643AF523971EFDCE7A54D7153DBB": return "The Legend of Zelda (USA) [FBAE]";
+                case "95F0D487E7FEF298B7DE7BBE0BB1DDAC": return "The Legend of Zelda (ゼルダの伝説) (JPN) [FBAJ]";
+                case "FB9B6B135988572D1004956758CAACE8": return "The Legend of Zelda ESP [0005000010104712] (USA) [FBAE - The Legend of Zelda]";
+                case "FF4F13B1D6261E86BF3B23F387BECA04": return "The Mysterious Murasame Castle (謎の村雨城) (JPN) [FC7J]";
+                case "6C042EF00917831CF552D5ADAD5FCD25": return "Tower of Babel (バベルの塔) (JPN) [FDBJ]";
+                case "2DF7AC485B63FE7B6FD21F11BBA471E5": return "Tsuppari Ōzumō (つっぱり大相撲) (JPN) [FDGJ]";
+                case "5A17B8CEBFA0F768EB31D548E05DF389": return "TwinBee (ツインビー) (JPN) [FAUJ]";
+                case "6CBEC9A9278BECE06A75237426F953B2": return "Ufouria: The Saga (EUR) [FDAP]";
+                case "A13253B77DD7A4940AA2F43C918A9410": return "Urban Champion (アーバンチャンピオン) (JPN) [FBPJ]";
+                case "80C0AF4025CDCF7136DF08FEF633433A": return "Valkyrie no Bōken: Toki no Kagi Densetsu (ワルキューレの冒険 時の鍵伝説) (JPN) [FDXJ]";
+                case "D2A7E23637ECE00DFC353AA939DD11E7": return "Volleyball (USA) [FCFE]";
+                case "1D1C2519CEAD8F6D6D82F675063FD9CC": return "Volleyball (バレーボール) (JPN) [FCFJ]";
+                case "39DB6F9311264543FF38932D604B45E9": return "VS. Excitebike (USA) [FEZE]";
+                case "42CBD505024A0896296A0F7A2994A98D": return "Wagan Land (ワギャンランド) (JPN) [FCUJ]";
+                case "75DAA3DB4C6751ADC86D3BB9F4B45B6A": return "Wagan Land 2 (ワギャンランド2) (JPN) [FEFJ]";
+                case "9EDB1800975F91161B6CB36FD76C642F": return "Wai Wai World 2: SOS!! Parsley Jō (ワイワイワールド2 SOS!!パセリ城) (JPN) [FDNJ]";
+                case "5B591B198FECDEBA28BE623425BC8E5D": return "Wario's Woods (USA) [FBVE]";
+                case "EF1BB1512D0BEB9E77038F35749C89D1": return "Wario's Woods (ワリオの森) (JPN) [FBVJ]";
+                case "E13BE22D906AB5BC201096AA8B7A6159": return "Wild Gunman (USA) [FEUE]";
+                case "DD311A666C3D9A537D7DBE4C7D8321EF": return "Wild Gunman (EUR) [FEUP]";
+                case "23357668FD6555D2927D27395A7CB687": return "Wrecking Crew (USA) [FA4E]";
+                case "FB2B51730A349591DDF9D41DF3E80B29": return "Yie Ar Kung-Fu (イー・アル・カンフー) (JPN) [FC3J]";
+                case "0C7F6D19C9C47713FEAC81C5C5692A2A": return "Yōkai Dōchūki (妖怪道中記) (JPN) [FDRJ]";
+                case "37F781C9CB30F696A5DE95285B16D162": return "Yoshi (USA) [FAME]";
+                case "03D98E06FB9B3B42237C6E6530E2C26E": return "Youkai Douchuuki ENG [0005000010105444] (JPN) [FDRJ - Yōkai Dōchūki (妖怪道中記)]";
+                case "B53FD09E9590699895EBD3D801CC706C": return "Zelda II: The Adventure of Link (USA) [FBCE]";
+                case "C66FC4AB5A045125E94CC93E2F7D2752": return "Zelda II: The Adventure of Link (リンクの冒険) (JPN) [FBCJ]";
+                case "4776E7DCF8B235A26B3EDF558D595192": return "Zelda II: The Adventure of Link Easy [0005000010101775] (USA) [FBCE - Zelda II: The Adventure of Link]";
+                case "287714C10768CC1819A55A96D31C7236": return "Zoda's Revenge: StarTropics II (USA) [FE3E]";
+                default: return "[Unknown]";
+            }
         }
 
         public string GetROMFileName()

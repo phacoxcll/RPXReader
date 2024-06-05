@@ -271,8 +271,8 @@ namespace RPXReader
                 StringBuilder strBuilder = new StringBuilder();
 
                 strBuilder.AppendLine("ROM info:");
-                strBuilder.AppendLine("  Title: \"" + GetTitleWithRegion(ProductCode) + "\"");
-                strBuilder.AppendLine("  Release date:       " + GetReleaseDate(ProductCode));
+                //strBuilder.AppendLine("  Title: \"" + GetTitleWithRegion(ProductCode) + "\"");
+                //strBuilder.AppendLine("  Release date:       " + GetReleaseDate(ProductCode));
                 strBuilder.AppendLine("  Product code:       " + ProductCode);
                 strBuilder.AppendLine("  Preset ID:          0x" + PresetID.ToString("X4"));
                 strBuilder.AppendLine("  Size:               " + Size.ToString() + " (bytes)");
@@ -332,15 +332,15 @@ namespace RPXReader
         { private set; get; }
         public VCType Type
         { private set; get; }
-        public uint CRCsSum
-        { private set; get; }
+        //public uint CRCsSum
+        //{ private set; get; }
 
         public RPXSNES(string filename, bool readInfo = true)
             : base(filename, readInfo)
         {
             ROM = new ROMInfo();
             Type = VCType.Unknown;
-            CRCsSum = 0;
+            //CRCsSum = 0;
 
             if (SectionHeader.Length == 0)
                 throw new FormatException("It is not an RPX file.");
@@ -433,10 +433,10 @@ namespace RPXReader
         protected override void ReadInfo(string filename)
         {
             base.ReadInfo(filename);
-            long sum = 0;
+            //long sum = 0;
             for (int i = 0; i < SectionHeader.Length; i++)
             {
-                sum += CRC[i];
+                //sum += CRC[i];
                 if (SectionHeader[i].sh_offset != 0 &&
                     SectionHeader[i].sh_addr == 0x10000000 &&
                     SectionName[i] == ".rodata")
@@ -453,14 +453,143 @@ namespace RPXReader
                     ROM = new ROMInfo(sectionData);
                 }
             }
-            sum -= (long)CRC[2] + CRC[3] + CRC[CRC.Length - 1];
-            CRCsSum = (uint)(sum >> 4);
+            //sum -= (long)CRC[2] + CRC[3] + CRC[CRC.Length - 1];
+            //CRCsSum = (uint)(sum >> 4);
+            MD5 = GetMD5();
+        }
+
+        private string GetMD5()
+        {
+            StringBuilder strBuilder = new StringBuilder();
+
+            if (SectionHeader.Length != 0)
+            {
+                //strBuilder.Append(CRC[0].ToString("X8"));//NULL
+                strBuilder.Append(CRC[1].ToString("X8"));//.syscall
+                //strBuilder.Append(CRC[2].ToString("X8"));//.text
+                //strBuilder.Append(CRC[3].ToString("X8"));//.rodata
+                strBuilder.Append(CRC[4].ToString("X8"));//.data (*)
+                strBuilder.Append(CRC[5].ToString("X8"));//.module_id
+                //strBuilder.Append(CRC[6].ToString("X8"));//.bss
+                strBuilder.Append(CRC[7].ToString("X8"));//.rela.rodata (*)
+                strBuilder.Append(CRC[8].ToString("X8"));//.rela.text (*)
+                strBuilder.Append(CRC[9].ToString("X8"));//.rela.data (*)
+                strBuilder.Append(CRC[10].ToString("X8"));//.fimport_nn_act
+
+                VCType type = GetVCType();
+                if (type == VCType.A1)
+                {
+                    //strBuilder.Append("N/A\t");//.dimport_nn_act
+                    strBuilder.Append(CRC[11].ToString("X8") + "\t");//.fimport_sysapp
+                    strBuilder.Append(CRC[12].ToString("X8") + "\t");//.fimport_zlib125
+                    strBuilder.Append(CRC[13].ToString("X8") + "\t");//.fimport_gx2
+                    strBuilder.Append(CRC[14].ToString("X8") + "\t");//.fimport_snd_core
+                    //strBuilder.Append(CRC[15].ToString("X8") + "\t");//.dimport_snd_core
+                    strBuilder.Append(CRC[23].ToString("X8") + "\t");//.fimport_snd_user
+                    //strBuilder.Append(CRC[24].ToString("X8") + "\t");//.dimport_snd_user
+                    strBuilder.Append(CRC[16].ToString("X8") + "\t");//.fimport_nn_save
+                    strBuilder.Append(CRC[17].ToString("X8") + "\t");//.fimport_vpad
+                    strBuilder.Append(CRC[18].ToString("X8") + "\t");//.fimport_proc_ui
+                    strBuilder.Append(CRC[19].ToString("X8") + "\t");//.fimport_padscore
+                    strBuilder.Append(CRC[20].ToString("X8") + "\t");//.fimport_coreinit
+                    strBuilder.Append(CRC[20].ToString("X8") + "\t");//.dimport_coreinit
+                    //strBuilder.Append(CRC[22].ToString("X8") + "\t");//.fimport_mic
+                    strBuilder.Append(CRC[25].ToString("X8") + "\t");//.symtab
+                    strBuilder.Append(CRC[26].ToString("X8") + "\t");//.strtab
+                    strBuilder.Append(CRC[27].ToString("X8") + "\t");//.shstrtab
+                    //strBuilder.Append(CRC[28].ToString("X8") + "\t");//CRCs
+                    //strBuilder.Append(CRC[29].ToString("X8") + "\t");//RPL Info
+                }
+                else if (type == VCType.A2)
+                {
+                    //strBuilder.Append("N/A\t");//.dimport_nn_act
+                    strBuilder.Append(CRC[11].ToString("X8") + "\t");//.fimport_sysapp
+                    strBuilder.Append(CRC[12].ToString("X8") + "\t");//.fimport_zlib125
+                    strBuilder.Append(CRC[13].ToString("X8") + "\t");//.fimport_gx2
+                    strBuilder.Append(CRC[14].ToString("X8") + "\t");//.fimport_snd_core
+                    //strBuilder.Append(CRC[15].ToString("X8") + "\t");//.dimport_snd_core
+                    strBuilder.Append(CRC[22].ToString("X8") + "\t");//.fimport_snd_user
+                    //strBuilder.Append(CRC[23].ToString("X8") + "\t");//.dimport_snd_user
+                    strBuilder.Append(CRC[16].ToString("X8") + "\t");//.fimport_nn_save
+                    strBuilder.Append(CRC[17].ToString("X8") + "\t");//.fimport_vpad
+                    strBuilder.Append(CRC[18].ToString("X8") + "\t");//.fimport_proc_ui
+                    strBuilder.Append(CRC[19].ToString("X8") + "\t");//.fimport_padscore
+                    strBuilder.Append(CRC[20].ToString("X8") + "\t");//.fimport_coreinit
+                    strBuilder.Append(CRC[21].ToString("X8") + "\t");//.dimport_coreinit
+                    //strBuilder.Append("N/A\t");//.fimport_mic
+                    strBuilder.Append(CRC[24].ToString("X8") + "\t");//.symtab
+                    strBuilder.Append(CRC[25].ToString("X8") + "\t");//.strtab
+                    strBuilder.Append(CRC[26].ToString("X8") + "\t");//.shstrtab
+                    //strBuilder.Append(CRC[27].ToString("X8") + "\t");//CRCs
+                    //strBuilder.Append(CRC[28].ToString("X8") + "\t");//RPL Info
+                }
+                else if (type == VCType.B1)
+                {
+                    //strBuilder.Append(CRC[11].ToString("X8") + "\t");//.dimport_nn_act
+                    strBuilder.Append(CRC[12].ToString("X8") + "\t");//.fimport_sysapp
+                    strBuilder.Append(CRC[13].ToString("X8") + "\t");//.fimport_zlib125
+                    strBuilder.Append(CRC[14].ToString("X8") + "\t");//.fimport_gx2
+                    strBuilder.Append(CRC[15].ToString("X8") + "\t");//.fimport_snd_core
+                    //strBuilder.Append("N/A\t");//.dimport_snd_core
+                    strBuilder.Append(CRC[22].ToString("X8") + "\t");//.fimport_snd_user
+                    //strBuilder.Append("N/A\t");//.dimport_snd_user
+                    strBuilder.Append(CRC[16].ToString("X8") + "\t");//.fimport_nn_save
+                    strBuilder.Append(CRC[17].ToString("X8") + "\t");//.fimport_vpad
+                    strBuilder.Append(CRC[18].ToString("X8") + "\t");//.fimport_proc_ui
+                    strBuilder.Append(CRC[19].ToString("X8") + "\t");//.fimport_padscore
+                    strBuilder.Append(CRC[20].ToString("X8") + "\t");//.fimport_coreinit
+                    strBuilder.Append(CRC[21].ToString("X8") + "\t");//.dimport_coreinit
+                    //strBuilder.Append("N/A\t");//.fimport_mic
+                    strBuilder.Append(CRC[23].ToString("X8") + "\t");//.symtab
+                    strBuilder.Append(CRC[24].ToString("X8") + "\t");//.strtab
+                    strBuilder.Append(CRC[25].ToString("X8") + "\t");//.shstrtab
+                    //strBuilder.Append(CRC[26].ToString("X8") + "\t");//CRCs
+                    //strBuilder.Append(CRC[27].ToString("X8") + "\t");//RPL Info
+                }
+                else if (type == VCType.B2)
+                {
+                    //strBuilder.Append(CRC[11].ToString("X8") + "\t");//.dimport_nn_act
+                    strBuilder.Append(CRC[12].ToString("X8") + "\t");//.fimport_sysapp
+                    strBuilder.Append(CRC[13].ToString("X8") + "\t");//.fimport_zlib125
+                    strBuilder.Append(CRC[14].ToString("X8") + "\t");//.fimport_gx2
+                    strBuilder.Append(CRC[15].ToString("X8") + "\t");//.fimport_snd_core
+                    //strBuilder.Append("N/A\t");//.dimport_snd_core
+                    strBuilder.Append(CRC[16].ToString("X8") + "\t");//.fimport_snd_user
+                    //strBuilder.Append("N/A\t");//.dimport_snd_user
+                    strBuilder.Append(CRC[17].ToString("X8") + "\t");//.fimport_nn_save
+                    strBuilder.Append(CRC[18].ToString("X8") + "\t");//.fimport_vpad
+                    strBuilder.Append(CRC[19].ToString("X8") + "\t");//.fimport_proc_ui
+                    strBuilder.Append(CRC[20].ToString("X8") + "\t");//.fimport_padscore
+                    strBuilder.Append(CRC[21].ToString("X8") + "\t");//.fimport_coreinit
+                    strBuilder.Append(CRC[22].ToString("X8") + "\t");//.dimport_coreinit
+                    //strBuilder.Append("N/A\t");//.fimport_mic
+                    strBuilder.Append(CRC[23].ToString("X8") + "\t");//.symtab
+                    strBuilder.Append(CRC[24].ToString("X8") + "\t");//.strtab
+                    strBuilder.Append(CRC[25].ToString("X8") + "\t");//.shstrtab
+                    //strBuilder.Append(CRC[26].ToString("X8") + "\t");//CRCs
+                    //strBuilder.Append(CRC[27].ToString("X8") + "\t");//RPL Info
+                }
+                else
+                {
+                    for (int i = 11; i < SectionHeader.Length; i++)
+                        strBuilder.Append(CRC[i].ToString("X8"));
+                }
+            }
+
+            byte[] hash;
+            System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create();
+            hash = md5.ComputeHash(Encoding.ASCII.GetBytes(strBuilder.ToString()));
+
+            return BitConverter.ToString(hash).Replace("-", string.Empty);
         }
 
         public override string ToString()
         {
             StringBuilder strBuilder = new StringBuilder();
 
+            strBuilder.AppendLine("MD5: " + MD5);
+            strBuilder.AppendLine("Base title: " + GetBase(MD5));
+            strBuilder.AppendLine();
             strBuilder.AppendLine(Header.ToString());
             strBuilder.Append(Info.ToString());
             strBuilder.AppendLine("  mSrcFileName: \"" + SrcFileName + "\"");
@@ -468,10 +597,10 @@ namespace RPXReader
             for (int i = 0; i < Tags.Count; i++)
                 strBuilder.AppendLine("    " + Tags[i]);
             strBuilder.AppendLine();
-            strBuilder.AppendLine("VC SNES:");
-            strBuilder.AppendLine("  Type: " + Type.ToString());
-            strBuilder.AppendLine("  CRCs sum: 0x" + CRCsSum.ToString("X8"));
-            strBuilder.AppendLine();
+            //strBuilder.AppendLine("VC SNES:");
+            //strBuilder.AppendLine("  Type: " + Type.ToString());
+            //strBuilder.AppendLine("  CRCs sum: 0x" + CRCsSum.ToString("X8"));
+            //strBuilder.AppendLine();
             strBuilder.Append(ROM.ToString());
             strBuilder.AppendLine();
 
@@ -490,6 +619,166 @@ namespace RPXReader
             }
 
             return strBuilder.ToString();
+        }
+
+        new public string GetBase(string md5)
+        {
+            switch (md5)
+            {
+                case "915D172266F7021DFF5E898EA50F3FA7": return "Albert Odyssey (アルバートオデッセイ) (JPN) [JC6J]";
+                case "6A88FCBA4D9B34300FD4226FEF88D9DB": return "Axelay (USA) [JCZE]";
+                case "A67408778421C1F90CBC4C874C015E38": return "Axelay (アクスレイ) (JPN) [JCZJ]";
+                case "092693D5BD8C3EEA42A6DE8B3A943225": return "Bahamut Lagoon (バハムート ラグーン) (JPN) [JCAJ]";
+                case "832B7E4A10FFAC3A468249AFF6E00D2A": return "Battletoads in Battlemaniacs [0005000010165001] (USA) [JANE - Kirby's Dream Land 3]";
+                case "A325638B95AF1BB840EED9734D83ECFD": return "Brawl Brothers (USA) [JBVE]";
+                case "D0458DE8BF36F5267B6654CF026785A1": return "Breath of Fire (USA) [JCVE]";
+                case "FDAF4B61D826CA769DAD6F77B9FD389F": return "Breath of Fire II (USA) [JBEE]";
+                case "6D8C097C782F57646FBC1B659AD3AEE3": return "Breath of Fire II: The Fated Child (ブレス オブ ファイアⅡ 使命の子) (JPN) [JBEJ]";
+                case "7E81CB3BE61EBD933E5D4098E3F45F4C": return "Castlevania: Dracula X (USA) [JCDE]";
+                case "10EC7115C7E01E36B0662138FC4A62B7": return "Clock Tower (クロックタワー) (JPN) [JBWJ]";
+                case "72B0B6413F9D8F0B6F4DD4DAB1118E1E": return "Contra III: The Alien Wars (USA) [JA5E]";
+                case "415AC74E8CB6C60A503EE845D8DA164F": return "Contra III: The Alien Wars (魂斗羅スピリッツ) (JPN) [JA5J]";
+                case "49D2EE2FE3E6171BF225F58413A3AF38": return "Contra III: The Alien Wars Restoration [0005000010105291] (USA) [JA5E - Contra III: The Alien Wars]";
+                case "7472383D43638CEFD2240D4BB5BB180C": return "Cosmo Gang the Puzzle (コズモギャング ザ パズル) (JPN) [JC4J]";
+                case "AE79C3B751B447597D741C8B011C0E38": return "Cybernator (USA) [JBNE]";
+                case "D70379AFCAB4940094C1A84AD6400F39": return "Cybernator (重装機兵ヴァルケン) (JPN) [JBNJ]";
+                case "7B27B2959EEC9757B89507561D29BB82": return "Darius Twin (ダライアスツイン) (JPN) [JDJJ]";
+                case "021A8BBFEE5C2C9CFC7FB3F17AE94CBD": return "Donkey Kong Country (USA) [JACE]";
+                case "DB1FA053670EBC7283AB0B72A3C062FF": return "Donkey Kong Country (EUR) [JACP]";
+                case "FBD6930C5D583316AA0AFC72A00FC8AF": return "Donkey Kong Country (スーパードンキーコング) (JPN) [JACJ]";
+                case "C49F28EC143EC5CB0CC886FDEF71C812": return "Donkey Kong Country 2: Diddy's Kong Quest (USA) [JAGE]";
+                case "60D7F84DBF839A30D223C099CCF713D3": return "Donkey Kong Country 2: The Lost Levels [0005000010105462] (USA) [JAGE - Donkey Kong Country 2: Diddy's Kong Quest]";
+                case "C50A962D9789E4BB281628F93E93C00E": return "Donkey Kong Country 3 - Tag Team Trouble [0005000010105463] (USA) [JCXE - Donkey Kong Country 3: Dixie Kong's Double Trouble!]";
+                case "114AD835F65EF43088F17A3ADEA55D71": return "Donkey Kong Country 3: Dixie Kong's Double Trouble! (USA) [JCXE]";
+                case "78403FE0FECA15B9ECEABF7E9A7721D8": return "Donkey Kong Country 3: Dixie Kong's Double Trouble! (スーパードンキーコング3 謎のクレミス島) (JPN) [JCXJ]";
+                case "2EB8BC6C766BFB74E8D8D8A6E1B170F8": return "Donkey Kong Country Easy Edition [0005000010105085] (USA) [JACE - Donkey Kong Country]";
+                case "B897546E83B72A6B61175DAE17330183": return "EarthBound (USA) [JBBE]";
+                case "2C03ABE178589000AB0752FD1890DF8E": return "EarthBound (EUR) [JBBP]";
+                case "AD541ACFCF57AE2F21AEFC7DFAA5E6A7": return "Earthbound New Controls Mod [0005000010102538] (USA) [JBBE - EarthBound]";
+                case "28D379E95CBD8B2D934E273E69BC9AE9": return "Earthworm Jim [0005000010166000] (USA) [JACE - Donkey Kong Country]";
+                case "A2B579F5153EF83ECFC77EAAC1026703": return "Famicom Bunko: Hajimari no Mori (はじまりの森) (JPN) [JBHJ]";
+                case "96F074A866686879F02CF95B4A71BEF0": return "Famicom Tantei Club Part II: Ushiro ni Tatsu Shōjo (ファミコン探偵倶楽部 PARTⅡ うしろに立つ少女) (JPN) [JA6J]";
+                case "F67F5B0AF38D9DD502842DFFFC416D53": return "Final Fantasy IV (ファイナルファンタジーIV) (JPN) [JBZJ]";
+                case "90F6FEEBEAB81D2C4B00042BDFDBD69F": return "Final Fantasy Mystic Quest (ファイナルファンタジーUSA ミスティッククエスト) (JPN) [JB7J]";
+                case "00BE40B07EAC39EA13991ADCB7BABFE1": return "Final Fantasy V (ファイナルファンタジーV) (JPN) [JB6J]";
+                case "93D24D3EBFD486E0A74A821530D9D44E": return "Final Fantasy VI (ファイナルファンタジーⅥ) (JPN) [JBYJ]";
+                case "622751C5BCCF64AD043EE04C36EF972B": return "Final Fight (USA) [JA8E]";
+                case "3B06EC8817D43100D41384BBE9707C45": return "Final Fight 2 (USA) [JBLE]";
+                case "7BF4A263E0F00EFDA645B91EFBB853CB": return "Final Fight 2 (ファイナルファイト2) (JPN) [JBLJ]";
+                case "FE0442746D1A67C19A8C6048279B5ABD": return "Final Fight 3 (USA) [JBUE]";
+                case "135F86DDC5E6DBDBDAFDB548F650BFAE": return "Final Fight 3 (ファイナルファイト タフ) (JPN) [JBUJ]";
+                case "A5ACF94B0CCA1ECFFEC8B7690634C9FC": return "Fire Emblem: Monshō no Nazo (ファイアーエムブレム　紋章の謎) (JPN) [JAHJ]";
+                case "FF32005A539A916B9E578D091E19496D": return "Fire Emblem: Seisen no Keifu (ファイアーエムブレム　聖戦の系譜) (JPN) [JAFJ]";
+                case "E33D50EE7E85F96E51A6FAD81D9286D1": return "Fire Emblem: Thracia 776 (ファイアーエムブレム  トラキア776) (JPN) [JBFJ]";
+                case "05C12D9DA331FF19273027250799C242": return "Fire Fighting (ファイヤー･ファイティング) (JPN) [JENJ]";
+                case "FDDC47914AFD910937F525A0C3089DB3": return "F-Zero (USA) [JARE]";
+                case "486090B7963343FEC0012BFA94F1368F": return "F-Zero (JPN) [JARJ]";
+                case "DFAF0A7C4C0766C16919BF20993E09E6": return "Gakkou de atta Kowai Hanashi (学校であった怖い話) (JPN) [JCSJ]";
+                case "14EA892BC23973736674D1CAB537C879": return "Ganbare Goemon 2: Kiteretsu Shōgun Magginesu (JPN) [JAUJ]";
+                case "12CCE8EDF9BA2DAAEEF2F3721621D4D6": return "Ganbare Goemon 3: Shishijūrokubē no Karakuri Manji Gatame (がんばれゴエモン3 獅子重禄兵衛のからくり卍固め) (JPN) [JAXJ]";
+                case "0F1729E2D5B015D25B532CA16CBE7022": return "Genghis Khan II: Clan of the Gray Wolf (USA) [JC7E]";
+                case "553545C8CBDDAB4A7FC4B6B229D985CD": return "Genghis Khan II: Clan of the Gray Wolf (スーパー蒼き狼と白き牝鹿 元朝秘史) (JPN) [JC7J]";
+                case "AB5D8E0F8E962C03F785974232AFB788": return "Gussun Oyoyo (すーぱーぐっすんおよよ) (JPN) [JC2J]";
+                case "3276E139FC4C38B850788FB12277C6ED": return "Harvest Moon (USA) [JBKE]";
+                case "FE171282AC06764E17D1F1FB24336A24": return "Harvest Moon (EUR) [JBKP]";
+                case "1FE542F7A233F20CBBD110D21C45EE3D": return "Heisei Shin Onigashima Part 1 (平成 新･鬼ヶ島 前編) (JPN) [JCMJ]";
+                case "1126C89C7A37C32870768780BBA24DAE": return "Heisei Shin Onigashima Part 2 (平成 新･鬼ヶ島 後編) (JPN) [JCQJ]";
+                case "0AE7ABD139DB22EDE02940251D042374": return "Heracles no Eikō III: Kamigami no Chinmoku (ヘラクレスの栄光Ⅲ 神々の沈黙) (JPN) [JA2J]";
+                case "7C331EE3C908D8DCE6F145DD4875CB3C": return "Heracles no Eikō IV: Kamigami kara no Okurimono (ヘラクレスの栄光Ⅳ 神々からの贈り物) (JPN) [JCYJ]";
+                case "040230DC8B3828421F27427283A6E607": return "Idol Janshi Suchie-Pai (美少女雀士スーチーパイ) (JPN) [JDEJ]";
+                case "4EDD4C685A506FF56233DE08B2648598": return "Kai: Tsukikomori (晦－つきこもり) (JPN) [JEMJ]";
+                case "17B12079775AC63B14AD8E2B917C6FF2": return "Kamaitachi no Yoru (かまいたちの夜) (JPN) [JAZJ]";
+                case "526430390B07F9F1A9C5DEE4A37507AD": return "Kirby Super Star (USA) [JAEE]";
+                case "0CF8CDB51E3891CD82749B56AFA8FB67": return "Kirby's Dream Course (USA) [JASE]";
+                case "DBF25474B1022AA2C26A3310D5D49EE3": return "Kirby's Dream Course (カービィボウル) (JPN) [JASJ]";
+                case "546CAB1678DD3989832EA57CCAEEF7EF": return "Kirby's Dream Land 3 (USA) [JANE]";
+                case "45DEAA621CDB68083086490F33858096": return "Kirby's Dream Land 3 (星のカービィ3) (JPN) [JANJ]";
+                case "EFCE161ED1E4B1A3F9B4322B08BD38B9": return "Kirby's Star Stacker (カービィのきらきらきっず) (JPN) [JAWJ]";
+                case "FD0B2EC0632BA670E946DE563868DDA3": return "Kunio-kun no Dodge Ball da yo: Zenin Shūgo (くにおくんのドッジボールだよ 全員集合！) (JPN) [JCKJ]";
+                case "9D891C11D4CC4D139584C6E24799D11B": return "Last Bible III (ラストバイブルⅢ) (JPN) [JCHJ]";
+                case "AE759744951CAA05CC7492512B6968CC": return "Live A Live (ライブ・ア・ライブ) (JPN) [JC5J]";
+                case "4AE80453D608119B23189C7F52DDE525": return "Majin Tensei (魔神転生) (JPN) [JC9J]";
+                case "C09ADB685F61D866990058382281000A": return "Majin Tensei II: Spiral Nemesis (魔神転生Ⅱ SPIRAL NEMESIS) (JPN) [JDFJ]";
+                case "FCDA10363AF8E662068C97E8D80466FE": return "Mario's Super Picross (EUR) [JAQP]";
+                case "57735FF0077AE360697C1A92D6A0D1A9": return "Mario's Super Picross (マリオのスーパーピクロス) (JPN) [JAQJ]";
+                case "888F40AB5EAB218D2DDDF1DEF4416467": return "Marvelous: Mōhitotsu no Takarajima (マーヴェラス ～もうひとつの宝島～) (JPN) [JCCJ]";
+                case "0575986B78DEB4E528E2F743C96E713D": return "Mega Man X (USA) [JBAE]";
+                case "0FB19459B10998F3F8212B112E7AB015": return "Mega Man X2 (USA) [JBTE]";
+                case "5BC9710236E1B9B9E382492D4F63A660": return "Mega Man X2 ESP [0005000010105694] (USA) [JCPE - Mega Man X3]";
+                case "BCA2EA307085B1362AFA637CAB7D6C2C": return "Mega Man X3 (USA) [JCPE]";
+                case "65ACAA38F684833FC484DEBA0536A5E4": return "Metal Marines (USA) [JC3E]";
+                case "ED8F9459C7E5BBD43336EC1AB8E067E1": return "Metal Marines (ミリティア) (JPN) [JC3J]";
+                case "59FC6F684270196C279F6ECA3F2D9E45": return "Metal Slader Glory (メタルスレイダーグローリー ディレクターズカット) (JPN) [JDLJ]";
+                case "60E5E8D1FBDD8648931EC110F0B8A85C": return "Mother 2 (JPN) [JBBJ]";
+                case "A451A70324A5C7EC5DA48DEF64821C70": return "Natsume Championship Wrestling (USA) [JCUE]";
+                case "7EAFAAFA05455379F18F4C94CE430BB6": return "Nobunaga's Ambition (USA) [JCLE]";
+                case "B80F9A650D48AB605F0C26DC24F5F253": return "Ogre Battle: The March of the Black Queen (伝説のオウガバトル) (JPN) [JB2J]";
+                case "1C449D010DD6B77EC48F4BCC19F6559C": return "Otogirisō (弟切草) (JPN) [JCEJ]";
+                case "F03A3375B43B747189F0B40EC15876A9": return "Pac-Attack (USA) [JC4E]";
+                case "706DA98743B233A73F39578353A6DC04": return "Pac-Attack (EUR) [JC4P]";
+                case "0127F8F5AAE58DF1F2DAF465FDF903A5": return "Pac-Man 2: The New Adventures (USA) [JDKE]";
+                case "E8F5D225FFA1646D4B53BA41E489E1D8": return "Panel de Pon (パネルでポン) (JPN) [JA3J]";
+                case "EB03D7ADEC34288D19D6925FBC1941D5": return "Pilotwings (USA) [JA7E]";
+                case "D8BFD1D939BFC59368927A5307AEAD13": return "Pop'n TwinBee (Pop'nツインビー) (JPN/EUR) [JCBJ]";
+                case "D1D240E53CE2E152A20B93A6EFE22C4C": return "Pop'n TwinBee: Rainbow Bell Adventures (ツインビー レインボーベルアドベンチャー) (JPN/EUR) [JCFJ]";
+                case "A1C2ECFA71D199E4DB4BA18CBEAA5981": return "Power Instinct (豪血寺一族) (JPN) [JEPJ]";
+                case "A267E33B72B97C4D36BAC60F7BC78392": return "Rival Turf! (USA) [JDBE]";
+                case "C84C4685F6F7C76AD4F19B75D9C6EDE3": return "Rockman X2 (ロックマンX2) (JPN) [JBTJ]";
+                case "BF90BAB27FD0D7C65B666CB30DE5EAD3": return "Rockman X3 (ロックマンX3) (JPN) [JCPJ]";
+                case "B8044BBBAE16BD345D44922A242C9674": return "Romance of the Three Kingdoms IV: Wall of Fire (USA) [JBCE]";
+                case "3932248346EA780BA9E3BA5D39274404": return "Romance of the Three Kingdoms IV: Wall of Fire (三國志Ⅳ) (JPN) [JBCJ]";
+                case "6EF46DD0FF06E3D6A08FFF2CB617DCF1": return "Romancing SaGa (ロマンシング サ・ガ) (JPN) [JB3J]";
+                case "69ACEC05E14F2F2E032C382AA38DF786": return "Romancing SaGa 2 (ロマンシング サ・ガ2) (JPN) [JB5J]";
+                case "C917FC9A2451ECA33A001E9CF2C86899": return "Romancing SaGa 3 (ロマンシング サ･ガ3) (JPN) [JB9J]";
+                case "1C7F3408AAB1B71CD9ED30E902F58310": return "Rushing Beat (ラッシング･ビート) (JPN) [JDBJ]";
+                case "54632249197DB1C7A385ABF655C304B7": return "Secret of Mana (聖剣伝説2) (JPN) [JBXJ]";
+                case "4F810D7FCC414E88D986CF5DAA1000BB": return "Shin Megami Tensei (真･女神転生) (JPN) [JA4J]";
+                case "61189177AD8BC3F243661A56967EB542": return "Shin Megami Tensei If… (真･女神転生if…) (JPN) [JBSJ]";
+                case "D7C8301F835F47FEA201AF55D588D50F": return "Shin Megami Tensei II (真･女神転生Ⅱ) (JPN) [JBRJ]";
+                case "985FD5A4D4E58A9F73E5C05264E60DD8": return "Space Invaders: The Original Game (JPN) [JDHJ]";
+                case "92E3ADE70C424072624441067EDCAB1D": return "Street Fighter Alpha 2 (USA) [JCGE]";
+                case "8F3595632A0AE9A2FA30EB5EE4E57801": return "Street Fighter II' Turbo: Hyper Fighting (USA) [JAYE]";
+                case "3BC47A115A88A879C9D91B7C00FC71AA": return "Street Fighter II' Turbo: Hyper Fighting (ストリートファイターⅡ ターボ ハイパー ファイティング) (JPN) [JAYJ]";
+                case "84C3BE501632326C66B773E8F4FE3932": return "Street Fighter II: The World Warrior (USA) [JAME]";
+                case "F399B716512562E21E1825B3D63E1E9C": return "Street Fighter II: The World Warrior (ストリートファイターⅡ ザ ワールド ウォーリアー) (JPN) [JAMJ]";
+                case "B97275FE1F9FD319A08E6DB46B5080E0": return "Street Fighter Zero 2 (ストリートファイターZERO2) (JPN) [JCGJ]";
+                case "4FCF29344E4FD7B9CA4A25B66927215E": return "Super Castlevania IV (USA) [JA9E]";
+                case "75D02F4BEA96E18D1811FCB3EE532099": return "Super E.D.F.: Earth Defense Force (USA) [JDAE]";
+                case "C917D40F0A53557ADFC65E7C2F3CFB27": return "Super E.D.F.: Earth Defense Force (JPN) [JDAJ]";
+                case "2F9BA3454597F4B3B974824B953B6E09": return "Super Famicom Wars (スーパーファミコンウォーズ) (JPN) [JBGJ]";
+                case "82B5119769B6CF340F985F50BB39F0FA": return "Super Ghouls 'n Ghosts (USA) [JATE]";
+                case "96CAEEB0A880D5C18FFCBCB232259636": return "Super Mario Kart (USA) [JAKE]";
+                case "27EE11866E8C3A09186C1BB079FDD695": return "Super Mario Kart (スーパーマリオカート) (JPN) [JAKJ]";
+                case "8FE994D4D89BA8495D533D00CEF1A782": return "Super Mario Kart Victory Drunk Plus! [0005000010105435] (USA) [JAKE - Super Mario Kart]";
+                case "5C32A356EAF94C858BA036573ACD3937": return "Super Mario RPG: Legend of the Seven Stars (USA) [JABE]";
+                case "4ADB32888932642CE437F825695699DD": return "Super Mario World (USA) [JAAE]";
+                case "86DC50E8C3005838E19D8D71D366563F": return "Super Metroid (USA) [JAJE]";
+                case "6032B2AFB767E316B5B5E82F5D6983E6": return "Super Metroid (EUR) [JAJP]";
+                case "8AB8E8227AE45D0BADCD2FC508414995": return "Super Metroid ESP [0005000010104717] (USA) [JAJE - Super Metroid]";
+                case "D0FE6B74798DC7EAFA5A0DC1116F8786": return "Super Ninja Boy (スーパーチャイニーズワールド) (JPN) [JCJJ]";
+                case "D44B157058599E4FE9E59C9129CED707": return "Super Nobunaga's Ambition (SUPER 信長の野望・全国版) (JPN) [JCLJ]";
+                case "B80B2FFEBAE5181E2C54D1DE25B71711": return "Super Punch-Out!! (USA) [JB8E]";
+                case "BB00EC211C83D14E3D5894110D9AFAFD": return "Super Punch-Out!! (EUR) [JB8P]";
+                case "A2ADC5251CE3DB241EA319DCBF7A61AD": return "Super Punch-Out!! (スーパーパンチアウト!!) (JPN) [JB8J]";
+                case "4A31937EAC317BCE5EE3FB7D3F35C444": return "Super Street Fighter II: The New Challengers (USA) [JAVE]";
+                case "1E3F1E4C267ED6A52A33E6D001955177": return "Super Street Fighter II: The New Challengers (スーパーストリートファイターⅡ ザ ニューチャレンジャーズ) (JPN) [JAVJ]";
+                case "8911302BF5C231A3F73AB3337B1898C1": return "Sutte Hakkun (すってはっくん) (JPN) [JCRJ]";
+                case "948345CB5F7E6E3CAB4ECD4DC396DD29": return "Tactics Ogre: Let Us Cling Together (タクティクスオウガ) (JPN) [JB4J]";
+                case "41D93BB5C0BEAB706FCDA925A12CA12F": return "Taikō Risshiden (太閤立志伝) (JPN) [JC8J]";
+                case "0241FF4171A8A49B4FE060D3DAD2C8F1": return "The Ignition Factor (USA) [JENE]";
+                case "FD440F163DE6EAA15FFB8A56BDC55122": return "The Legend of the Mystical Ninja (USA) [JALE]";
+                case "632A491D5F9BE599B37FD8D152D8F3AB": return "The Legend of the Mystical Ninja (EUR) [JALP]";
+                case "02614A8F3FF551389DAD3C330AD6AF2A": return "The Legend of Zelda: A Link to the Past (USA) [JADE]";
+                case "A58BF87413318F37DD0AFA63DD2D1DEB": return "The Legend of Zelda: A Link to the Past (EUR) [JADP]";
+                case "A2AE21A915BEC833A0129FE947FEB1DB": return "Treasure of the Rudras (ルドラの秘宝) (JPN) [JDGJ]";
+                case "99A89AA68ED1090ED42CCEAEAFA49570": return "Uncharted Waters II: New Horizons (大航海時代Ⅱ) (JPN) [JBQJ]";
+                case "CD5005E33EA525F536C007071056582C": return "Uncharted Waters: New Horizons (USA) [JBQE]";
+                case "B8214A362CDFAD65875366D2257C9782": return "Vegas Stakes (USA) [JBJE]";
+                case "9352919722880ED6626AF472859A2D19": return "Wagan Land (スーパーワギャンランド) (JPN) [JBMJ]";
+                case "3F7E0EC3DA5DC0BBB97B3100386AFEA2": return "Wild Guns (USA) [JCTE]";
+                case "3175C4D9FA26C042000646036637E3C4": return "Wrecking Crew '98 (レッキングクルー'98) (JPN) [JLCJ]";
+                default: return "[Unknown]";
+            }
         }
 
         public string GetROMFileName()
